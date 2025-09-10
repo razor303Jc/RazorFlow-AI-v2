@@ -17,7 +17,7 @@ const Dashboard = ({ data, botType }) => {
           <div>
             <p className="text-slate-400 text-sm">Revenue</p>
             <p className="text-2xl font-bold text-green-400">
-              ${data.data.revenue.toLocaleString()}
+              ${(data?.data?.revenue || 0).toLocaleString()}
             </p>
           </div>
           <DollarSign className="h-8 w-8 text-green-400" />
@@ -29,7 +29,7 @@ const Dashboard = ({ data, botType }) => {
           <div>
             <p className="text-slate-400 text-sm">Expenses</p>
             <p className="text-2xl font-bold text-red-400">
-              ${data.data.expenses.toLocaleString()}
+              ${(data?.data?.expenses || 0).toLocaleString()}
             </p>
           </div>
           <BarChart3 className="h-8 w-8 text-red-400" />
@@ -41,7 +41,7 @@ const Dashboard = ({ data, botType }) => {
           <div>
             <p className="text-slate-400 text-sm">Profit</p>
             <p className="text-2xl font-bold text-blue-400">
-              ${data.data.profit.toLocaleString()}
+              ${(data?.data?.profit || 0).toLocaleString()}
             </p>
           </div>
           <TrendingUp className="h-8 w-8 text-blue-400" />
@@ -69,7 +69,7 @@ const Dashboard = ({ data, botType }) => {
           <div>
             <p className="text-slate-400 text-sm">Leads</p>
             <p className="text-2xl font-bold text-blue-400">
-              {data.data.leads}
+              {data?.data?.leads || 0}
             </p>
           </div>
           <Users className="h-8 w-8 text-blue-400" />
@@ -81,7 +81,7 @@ const Dashboard = ({ data, botType }) => {
           <div>
             <p className="text-slate-400 text-sm">Conversions</p>
             <p className="text-2xl font-bold text-green-400">
-              {data.data.conversions}
+              {data?.data?.conversions || 0}
             </p>
           </div>
           <TrendingUp className="h-8 w-8 text-green-400" />
@@ -93,7 +93,7 @@ const Dashboard = ({ data, botType }) => {
           <div>
             <p className="text-slate-400 text-sm">Pipeline Value</p>
             <p className="text-2xl font-bold text-purple-400">
-              ${data.data.pipeline_value.toLocaleString()}
+              ${(data?.data?.pipeline_value || 0).toLocaleString()}
             </p>
           </div>
           <DollarSign className="h-8 w-8 text-purple-400" />
@@ -105,7 +105,7 @@ const Dashboard = ({ data, botType }) => {
           <div>
             <p className="text-slate-400 text-sm">Close Rate</p>
             <p className="text-2xl font-bold text-yellow-400">
-              {data.data.close_rate}%
+              {data?.data?.close_rate || 0}%
             </p>
           </div>
           <BarChart3 className="h-8 w-8 text-yellow-400" />

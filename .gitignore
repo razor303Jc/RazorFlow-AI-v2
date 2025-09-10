@@ -90,3 +90,48 @@ railway-data/
 # Temporary files
 tmp/
 temp/
+
+# Test files and outputs (exclude all test artifacts)
+test_*.py
+test_*.png
+test_*.html
+test_*.json
+test_screenshots/
+test_html_captures/
+test_results/
+test-env/
+comprehensive_test_report.json
+COMPREHENSIVE_TEST_REPORT.html
+CORRECTED_TEST_REPORT.md
+TEST_REPORT_COMPREHENSIVE.md
+SALESBOT_FIX_REPORT.md
+TODO_CRITICAL_FIXES.md
+TEST_FRAMEWORK_SUMMARY.md
+
+# Playwright test artifacts
+.playwright-mcp/
+
+# Documentation and reports (keep only essential docs)
+*_COMPLETE.md
+*_SUCCESS.md
+DEPLOY_NOW.md
+DOCKER_CLEANUP_COMPLETE.md
+DOCKER_README.md
+IMPLEMENTATION_*.md
+MONETIZATION_ROADMAP.md
+RAILWAY_DEPLOYMENT_GUIDE.md
+SUCCESS_REPORT.md
+
+# Screenshot files
+*.png
+!frontend/public/*.png
+!docs/**/*.png
+
+# Script files that are development-specific
+manual-test-guide.sh
+run-playwright.sh
+test-deployment.py
+test-performance.sh
+razorflow-docker.sh
+start-*.sh
+setup-local.sh

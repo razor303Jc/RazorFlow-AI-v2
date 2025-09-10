@@ -10,8 +10,8 @@ import PerformanceMonitor from './components/PerformanceMonitor'
 const API_BASE = 'http://localhost:8000'
 
 function App() {
-  const [activeSection, setActiveSection] = useState('portfolio')
-  const [activeBot, setActiveBot] = useState('finance')
+  const [activeSection, setActiveSection] = useState('demos')
+  const [activeBot, setActiveBot] = useState('sales')
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)

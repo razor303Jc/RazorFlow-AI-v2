@@ -158,10 +158,8 @@ async def error_handling_middleware(request, call_next):
 
 # CORS middleware configuration with enhanced logging
 try:
-    cors_origins = os.getenv(
-        "CORS_ORIGINS", 
-        "http://localhost:3000,http://localhost:3001,http://localhost:5173"
-    ).split(",")
+    # Temporarily allow all origins for debugging
+    cors_origins = ["*"]  # Allow all origins for debugging
     logger.info(f"CORS origins configured: {cors_origins}")
 
     app.add_middleware(
