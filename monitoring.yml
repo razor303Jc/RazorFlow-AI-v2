@@ -1,0 +1,66 @@
+# RazorFlow AI Health Monitoring Configuration
+
+# Service endpoints for health monitoring
+services:
+  postgres:
+    name: "PostgreSQL Database"
+    host: "localhost"
+    port: 5434
+    health_check: "pg_isready"
+    timeout: 10
+    retries: 3
+    
+  redis:
+    name: "Redis Cache"
+    host: "localhost" 
+    port: 6379
+    health_check: "redis-cli ping"
+    timeout: 5
+    retries: 3
+    
+  chromadb:
+    name: "ChromaDB Vector Database"
+    host: "localhost"
+    port: 8001
+    health_check: "curl -f http://localhost:8001/api/v1/heartbeat"
+    timeout: 10
+    retries: 3
+    
+  backend:
+    name: "FastAPI Backend"
+    host: "localhost"
+    port: 8000
+    health_check: "curl -f http://localhost:8000/health"
+    timeout: 15
+    retries: 3
+    
+  frontend:
+    name: "React Frontend"
+    host: "localhost"
+    port: 3000
+    health_check: "curl -f http://localhost:3000/health"
+    timeout: 10
+    retries: 3
+
+# Monitoring thresholds
+thresholds:
+  cpu_usage: 80
+  memory_usage: 85
+  disk_usage: 90
+  response_time: 5000  # milliseconds
+
+# Alert configuration
+alerts:
+  enabled: true
+  channels:
+    - console
+    - log_file
+  log_file: "./logs/alerts.log"
+
+# Logging configuration for monitoring
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/monitoring.log"
+  max_size: "10MB"
+  backup_count: 5

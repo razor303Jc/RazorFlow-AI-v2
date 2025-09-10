@@ -1,0 +1,85 @@
+# Multi-stage build for React frontend with debugging capabilities
+FROM node:18-slim as builder
+
+# Set working directory
+WORKDIR /app
+
+# Install build dependencies and debugging tools
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    wget \
+    vim \
+    bash \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY frontend/package*.json ./
+
+# Clear npm cache and install all dependencies (including devDependencies for build)
+RUN npm cache clean --force && \
+    rm -rf node_modules package-lock.json && \
+    npm install
+
+# Copy source code
+COPY frontend/ .
+
+# Create production vite config without base path
+RUN echo 'import { defineConfig } from "vite"' > vite.config.prod.js && \
+    echo 'import react from "@vitejs/plugin-react"' >> vite.config.prod.js && \
+    echo '' >> vite.config.prod.js && \
+    echo 'export default defineConfig({' >> vite.config.prod.js && \
+    echo '  plugins: [react()],' >> vite.config.prod.js && \
+    echo '  base: "/",' >> vite.config.prod.js && \
+    echo '  build: {' >> vite.config.prod.js && \
+    echo '    outDir: "dist",' >> vite.config.prod.js && \
+    echo '    assetsDir: "assets"' >> vite.config.prod.js && \
+    echo '  },' >> vite.config.prod.js && \
+    echo '  server: {' >> vite.config.prod.js && \
+    echo '    port: 5173,' >> vite.config.prod.js && \
+    echo '    host: "0.0.0.0"' >> vite.config.prod.js && \
+    echo '  }' >> vite.config.prod.js && \
+    echo '})' >> vite.config.prod.js
+
+# Build the application using production config
+RUN npm run build -- --config vite.config.prod.js
+
+# Production stage with Nginx
+FROM nginx:1.25-alpine
+
+# Install debugging tools in production image
+RUN apk add --no-cache \
+    curl \
+    wget \
+    vim \
+    bash \
+    htop \
+    procps
+
+# Copy built application
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy custom nginx configuration
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+
+# Create log directory
+RUN mkdir -p /app/logs && \
+    chown -R nginx:nginx /app/logs
+
+# Health check script
+RUN echo '#!/bin/bash\ncurl -f http://localhost:3000 || exit 1' > /usr/local/bin/healthcheck.sh && \
+    chmod +x /usr/local/bin/healthcheck.sh
+
+# Expose port
+EXPOSE 3000
+
+# Add custom entrypoint for debugging
+COPY docker/frontend-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Start nginx
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]

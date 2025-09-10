@@ -1,0 +1,205 @@
+services:
+  # PostgreSQL Database with enhanced logging
+  postgres:
+    image: postgres:15-alpine
+    container_name: razorflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-razorflow_ai}
+      POSTGRES_USER: ${POSTGRES_USER:-razorflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-razorflow_secret_2025}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./logs/postgres:/var/log/postgresql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - razorflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-razorflow} -d ${POSTGRES_DB:-razorflow_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=postgres"
+    command: >
+      postgres 
+      -c logging_collector=on 
+      -c log_destination='stderr' 
+      -c log_statement='all' 
+      -c log_duration=on 
+      -c log_line_prefix='%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+      -c log_checkpoints=on
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_lock_waits=on
+      -c log_temp_files=0
+      -c log_autovacuum_min_duration=0
+      -c log_error_verbosity=verbose
+
+  # Redis Cache with enhanced logging
+  redis:
+    image: redis:7-alpine
+    container_name: razorflow-redis
+    restart: unless-stopped
+    command: redis-server --loglevel notice --logfile ""
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - razorflow-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ChromaDB Vector Database with enhanced logging
+  chromadb:
+    image: ghcr.io/chroma-core/chroma:latest
+    container_name: razorflow-chromadb
+    restart: unless-stopped
+    environment:
+      CHROMA_SERVER_CORS_ALLOW_ORIGINS: '["http://localhost:3000","http://localhost:5173","http://localhost:8000"]'
+      CHROMA_SERVER_HOST: 0.0.0.0
+      CHROMA_SERVER_PORT: 8000
+      CHROMA_LOG_LEVEL: DEBUG
+    ports:
+      - "${CHROMA_PORT:-8001}:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    networks:
+      - razorflow-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v2/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # RazorFlow AI Backend with enhanced debugging
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: razorflow-backend
+    restart: unless-stopped
+    command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]
+    working_dir: /app
+    environment:
+      # Application settings
+      DEBUG: ${DEBUG:-true}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      PORT: ${BACKEND_PORT:-8000}
+      
+      # Database connections
+      DATABASE_URL: postgresql://${POSTGRES_USER:-razorflow}:${POSTGRES_PASSWORD:-razorflow_secret_2025}@postgres:5432/${POSTGRES_DB:-razorflow_ai}
+      REDIS_URL: redis://redis:6379/0
+      CHROMA_URL: http://chromadb:8000
+      
+      # CORS settings
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      
+      # Logging settings
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      LOG_FORMAT: ${LOG_FORMAT:-detailed}
+      PYTHONPATH: /app
+      
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app/src
+      - ./logs/backend:/app/logs
+      - /tmp:/tmp
+    networks:
+      - razorflow-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Development Server (optional for containerized development)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: razorflow-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      VITE_API_BASE: ${VITE_API_BASE:-http://localhost:8000}
+      VITE_DEBUG: ${DEBUG:-true}
+    ports:
+      - "${FRONTEND_PORT:-3001}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - ./logs/frontend:/app/logs
+    networks:
+      - razorflow-network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=frontend"
+
+  # Log aggregation and monitoring
+  log-aggregator:
+    image: fluent/fluentd:v1.16-debian-1
+    container_name: razorflow-logs
+    restart: unless-stopped
+    volumes:
+      - ./logs:/fluentd/log
+      - ./fluentd/conf:/fluentd/etc
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    networks:
+      - razorflow-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=log-aggregator"
+
+networks:
+  razorflow-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  chromadb_data:
+    driver: local
